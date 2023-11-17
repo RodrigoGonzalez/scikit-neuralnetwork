@@ -44,17 +44,15 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
     def _check_layer(self, layer, required, optional=[]):
         required.extend(['name', 'type'])
         for r in required:
-            if getattr(layer, r) is None: raise\
-                ValueError("Layer type `%s` requires parameter `%s`."\
-                           % (layer.type, r))
+            if getattr(layer, r) is None:
+                raise ValueError(f"Layer type `{layer.type}` requires parameter `{r}`.")
 
         optional.extend(['weight_decay', 'dropout', 'normalize', 'frozen'])
         for a in layer.__dict__:
             if a in required+optional:
                 continue
             if getattr(layer, a) is not None:
-                log.warning("Parameter `%s` is unused for layer type `%s`."\
-                            % (a, layer.type))
+                log.warning(f"Parameter `{a}` is unused for layer type `{layer.type}`.")
 
     def _create_specs(self, X, y=None):
         # Automatically work out the output unit count based on dataset.
@@ -62,7 +60,7 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
             self.layers[-1].units = y.shape[1]
         else:
             assert y is None or self.layers[-1].units == y.shape[1],\
-                "Mismatch between dataset size and units in output layer."
+                    "Mismatch between dataset size and units in output layer."
 
         # Then compute the number of units in each layer for initialization.
         self.unit_counts = [numpy.product(X.shape[1:]) if self.is_convolution() else X.shape[1]]
@@ -70,18 +68,19 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
 
         for l in self.layers:
             if isinstance(l, Convolution):
-                assert l.kernel_shape is not None,\
-                    "Layer `%s` requires parameter `kernel_shape` to be set." % (l.name,)
-                if l.border_mode == 'valid':
-                    res = (int((res[0] - l.kernel_shape[0]) / l.pool_shape[0]) + 1,
-                           int((res[1] - l.kernel_shape[1]) / l.pool_shape[1]) + 1)
+                assert (
+                    l.kernel_shape is not None
+                ), f"Layer `{l.name}` requires parameter `kernel_shape` to be set."
                 if l.border_mode == 'full':
                     res = (int((res[0] + l.kernel_shape[0]) / l.pool_shape[0]) - 1,
                            int((res[1] + l.kernel_shape[1]) / l.pool_shape[1]) - 1)
-                           
+
+                elif l.border_mode == 'valid':
+                    res = (int((res[0] - l.kernel_shape[0]) / l.pool_shape[0]) + 1,
+                           int((res[1] - l.kernel_shape[1]) / l.pool_shape[1]) + 1)
                 if l.scale_factor != (1, 1):
                     res = (int(l.scale_factor[0] * res[0]), int(l.scale_factor[1] * res[1]))
- 
+
                 unit_count = numpy.prod(res) * l.channels
             else:
                 unit_count = l.units
@@ -128,18 +127,17 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
             return
 
         del variables['self']
-        if isinstance(self.callback, dict):
-            function = self.callback.get(event, None)
-            return function(**variables) if function else True
-        else:
+        if not isinstance(self.callback, dict):
             return self.callback(event, **variables)
+        function = self.callback.get(event, None)
+        return function(**variables) if function else True
 
     def _train(self, X, y, w=None):
         assert self.n_iter or self.n_stable,\
-            "Neither n_iter nor n_stable were specified; training would loop forever."
+                "Neither n_iter nor n_stable were specified; training would loop forever."
 
         best_train_error, best_valid_error = float("inf"), float("inf")
-        best_params = [] 
+        best_params = []
         n_stable = 0
         self._do_callback('on_train_start', locals())
 
@@ -152,9 +150,9 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
             if avg_train_error is not None:
                 if math.isnan(avg_train_error):
                     raise RuntimeError("Training diverged and returned NaN.")
-                
+
                 best_train_error = min(best_train_error, avg_train_error)
-                is_best_train = bool(avg_train_error < best_train_error * (1.0 + self.f_stable))
+                is_best_train = avg_train_error < best_train_error * (1.0 + self.f_stable)
 
             is_best_valid = False
             avg_valid_error = None
@@ -162,7 +160,7 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
                 avg_valid_error = self._backend._valid_impl(*self.valid_set)
                 if avg_valid_error is not None:
                     best_valid_error = min(best_valid_error, avg_valid_error)
-                    is_best_valid = bool(avg_valid_error < best_valid_error * (1.0 + self.f_stable))
+                    is_best_valid = avg_valid_error < best_valid_error * (1.0 + self.f_stable)
 
             finish_time = time.time()
             log.debug("\r{:>5}         {}{}{}            {}{}{}        {:>5.1f}s".format(
@@ -203,7 +201,7 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
 
     def _fit(self, X, y, w=None):
         assert X.shape[0] == y.shape[0],\
-            "Expecting same number of input and output samples."
+                "Expecting same number of input and output samples."
         data_shape = X.shape
         known_size = hasattr(X, 'size') and hasattr(y, 'size')
         data_size = '{:,}'.format(X.size+y.size) if known_size else 'N/A'
@@ -214,22 +212,22 @@ class MultiLayerPerceptron(NeuralNetwork, sklearn.base.BaseEstimator):
 
         log.info("Training on dataset of {:,} samples with {} total size.".format(data_shape[0], data_size))
         if data_shape[1:] != X.shape[1:]:
-            log.warning("  - Reshaping input array from {} to {}.".format(data_shape, X.shape))
+            log.warning(f"  - Reshaping input array from {data_shape} to {X.shape}.")
         if self.valid_set is not None:
             X_v, _ = self.valid_set
             log.debug("  - Train: {: <9,}  Valid: {: <4,}".format(X.shape[0], X_v.shape[0]))
         regularize = self.regularize or self.auto_enabled.get('regularize', None)
         if regularize is not None:
-            comment = ", auto-enabled from layers" if 'regularize' in self.auto_enabled else "" 
-            log.debug("  - Using `%s` for regularization%s." % (regularize, comment))
+            comment = ", auto-enabled from layers" if 'regularize' in self.auto_enabled else ""
+            log.debug(f"  - Using `{regularize}` for regularization{comment}.")
         normalize = self.normalize or self.auto_enabled.get('normalize', None)
         if normalize is not None:
             comment = ", auto-enabled from layers" if 'normalize' in self.auto_enabled else ""
-            log.debug("  - Using `%s` normalization%s." % (normalize, comment))
+            log.debug(f"  - Using `{normalize}` normalization{comment}.")
         if self.n_iter is not None:
-            log.debug("  - Terminating loop after {} total iterations.".format(self.n_iter))
+            log.debug(f"  - Terminating loop after {self.n_iter} total iterations.")
         if self.n_stable is not None and self.n_stable < (self.n_iter or sys.maxsize):
-            log.debug("  - Early termination after {} stable iterations.".format(self.n_stable))
+            log.debug(f"  - Early termination after {self.n_stable} stable iterations.")
 
         if self.verbose:
             log.debug("\nEpoch       Training Error       Validation Error       Time"
@@ -365,16 +363,18 @@ class Classifier(MultiLayerPerceptron, sklearn.base.ClassifierMixin):
         """
 
         assert X.shape[0] == y.shape[0],\
-            "Expecting same number of input and output samples."
+                "Expecting same number of input and output samples."
         if y.ndim == 1:
             y = y.reshape((y.shape[0], 1))
 
         if y.shape[1] == 1 and self.layers[-1].type != 'Softmax':
-            log.warning('{}WARNING: Expecting `Softmax` type for the last layer '
-                        'in classifier.{}\n'.format(ansi.YELLOW, ansi.ENDC))
+            log.warning(
+                f'{ansi.YELLOW}WARNING: Expecting `Softmax` type for the last layer in classifier.{ansi.ENDC}\n'
+            )
         if y.shape[1] > 1 and self.layers[-1].type != 'Sigmoid':
-            log.warning('{}WARNING: Expecting `Sigmoid` as last layer in '
-                        'multi-output classifier.{}\n'.format(ansi.YELLOW, ansi.ENDC))
+            log.warning(
+                f'{ansi.YELLOW}WARNING: Expecting `Sigmoid` as last layer in multi-output classifier.{ansi.ENDC}\n'
+            )
 
         # Deal deal with single- and multi-output classification problems.
         LB = sklearn.preprocessing.LabelBinarizer

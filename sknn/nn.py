@@ -88,10 +88,10 @@ class Layer(object):
             frozen=False):
 
         assert warning is None,\
-            "Specify layer parameters as keyword arguments, not positional arguments."
+                "Specify layer parameters as keyword arguments, not positional arguments."
 
         if type not in ['Rectifier', 'Sigmoid', 'Tanh', 'Linear', 'Softmax', 'Gaussian', 'ExpLin']:
-            raise NotImplementedError("Layer type `%s` is not implemented." % type)
+            raise NotImplementedError(f"Layer type `{type}` is not implemented.")
 
         self.name = name
         self.type = type
@@ -106,7 +106,7 @@ class Layer(object):
         """
         for k, v in params.items():
             if k not in self.__dict__:
-                raise ValueError("Invalid parameter `%s` for layer `%s`." % (k, self.name))
+                raise ValueError(f"Invalid parameter `{k}` for layer `{self.name}`.")
             self.__dict__[k] = v
 
     def __eq__(self, other):
@@ -116,7 +116,7 @@ class Layer(object):
         copy = self.__dict__.copy()
         del copy['type']
         params = ", ".join(["%s=%r" % (k, v) for k, v in copy.items() if v is not None])
-        return "<sknn.nn.%s `%s`: %s>" % (self.__class__.__name__, self.type, params)
+        return f"<sknn.nn.{self.__class__.__name__} `{self.type}`: {params}>"
 
 
 class Native(object):
@@ -258,12 +258,14 @@ class Convolution(Layer):
             frozen=False):
 
         assert warning is None,\
-            "Specify layer parameters as keyword arguments, not positional arguments."
+                "Specify layer parameters as keyword arguments, not positional arguments."
 
         if type not in ['Rectifier', 'Sigmoid', 'Tanh', 'Linear', 'ExpLin']:
-            raise NotImplementedError("Convolution type `%s` is not implemented." % (type,))
+            raise NotImplementedError(f"Convolution type `{type}` is not implemented.")
         if border_mode not in ['valid', 'full', 'same']:
-            raise NotImplementedError("Convolution border_mode `%s` is not implemented." % (border_mode,))
+            raise NotImplementedError(
+                f"Convolution border_mode `{border_mode}` is not implemented."
+            )
 
         super(Convolution, self).__init__(
                 type,
@@ -457,12 +459,13 @@ class NeuralNetwork(object):
             **params):
 
         assert warning is None,\
-            "Specify network parameters as keyword arguments, not positional arguments."
+                "Specify network parameters as keyword arguments, not positional arguments."
 
         self.layers = []
         for i, layer in enumerate(layers):
-            assert isinstance(layer, Layer) or isinstance(layer, Native),\
-                "Specify each layer as an instance of a `sknn.mlp.Layer` object."
+            assert isinstance(
+                layer, (Layer, Native)
+            ), "Specify each layer as an instance of a `sknn.mlp.Layer` object."
 
             # Layer names are optional, if not specified then generate one.
             if layer.name is None:
@@ -477,14 +480,23 @@ class NeuralNetwork(object):
         # Don't support any additional parameters that are not in the constructor.
         # These are specified only so `get_params()` can return named layers, for double-
         # underscore syntax to work.
-        assert len(params) == 0,\
-            "The specified additional parameters are unknown: %s." % ','.join(params.keys())
+        assert (
+            not params
+        ), f"The specified additional parameters are unknown: {','.join(params.keys())}."
 
         # Basic checking of the freeform string options.
-        assert regularize in (None, 'L1', 'L2', 'dropout'),\
-            "Unknown type of regularization specified: %s." % regularize
-        assert loss_type in ('mse', 'mae', 'mcc', None),\
-            "Unknown loss function type specified: %s." % loss_type
+        assert regularize in (
+            None,
+            'L1',
+            'L2',
+            'dropout',
+        ), f"Unknown type of regularization specified: {regularize}."
+        assert loss_type in (
+            'mse',
+            'mae',
+            'mcc',
+            None,
+        ), f"Unknown loss function type specified: {loss_type}."
 
         self.weights = parameters
         self.random_state = random_state
@@ -493,7 +505,7 @@ class NeuralNetwork(object):
         self.learning_momentum = learning_momentum
         self.normalize = normalize
         self.regularize = regularize or ('dropout' if dropout_rate else None)\
-                                     or ('L2' if weight_decay else None)
+                                         or ('L2' if weight_decay else None)
         self.weight_decay = weight_decay
         self.dropout_rate = dropout_rate
         self.batch_size = batch_size
@@ -506,7 +518,7 @@ class NeuralNetwork(object):
         self.debug = debug
         self.verbose = verbose
         self.callback = callback
-        
+
         self.auto_enabled = {}
         self._backend = None
         self._create_logger()
@@ -540,8 +552,8 @@ class NeuralNetwork(object):
         is_conv : boolean
             True if either of the specified layers are indeed convolution, False otherwise. 
         """
-        check_output = output 
-        check_input = False if check_output and input is None else True
+        check_output = output
+        check_input = not check_output or input is not None
         i = check_input and isinstance(self.layers[0], Convolution)
         o = check_output and isinstance(self.layers[-1], Convolution)
         return i or o

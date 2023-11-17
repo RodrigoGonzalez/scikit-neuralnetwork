@@ -3,6 +3,7 @@
 Visualizing Parameters in a Modern Neural Network
 =================================================
 """
+
 from __future__ import (absolute_import, unicode_literals, print_function)
 print(__doc__)
 
@@ -69,10 +70,23 @@ for (activation, alpha, dropout, iterations, output, regularize, rule, units) in
         n_iter=iterations, n_stable=iterations, regularize=regularize,
         dropout_rate=dropout, learning_rule=rule, learning_rate=alpha),)
 
-    t = []
-    for k, v in zip(sorted(PARAMETERS), [activation, alpha, dropout, iterations, output, regularize, rule, units]):
-        if k in args.params:
-            t.append(str(v))
+    t = [
+        str(v)
+        for k, v in zip(
+            sorted(PARAMETERS),
+            [
+                activation,
+                alpha,
+                dropout,
+                iterations,
+                output,
+                regularize,
+                rule,
+                units,
+            ],
+        )
+        if k in args.params
+    ]
     names.append(','.join(t))
 
 # Create randomized datasets for visualizations, on three rows.

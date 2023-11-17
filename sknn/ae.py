@@ -73,14 +73,18 @@ class Layer(nn.Layer):
                  corruption_level=0.5):
 
         assert warning is None, \
-            "Specify layer parameters as keyword arguments, not positional arguments."
+                "Specify layer parameters as keyword arguments, not positional arguments."
 
         if type not in ['denoising', 'autoencoder']:
-            raise NotImplementedError("AutoEncoder layer type `%s` is not implemented." % type)
+            raise NotImplementedError(
+                f"AutoEncoder layer type `{type}` is not implemented."
+            )
         if cost not in ['msre', 'mbce']:
-            raise NotImplementedError("Error type '%s' is not implemented." % cost)
+            raise NotImplementedError(f"Error type '{cost}' is not implemented.")
         if activation not in ['Sigmoid', 'Tanh']:
-            raise NotImplementedError("Activation type '%s' is not implemented." % activation)
+            raise NotImplementedError(
+                f"Activation type '{activation}' is not implemented."
+            )
 
         self.activation = activation
         self.type = type
@@ -118,14 +122,14 @@ class AutoEncoder(nn.NeuralNetwork, sklearn.base.TransformerMixin):
 
         log.info("Training on dataset of {:,} samples with {:,} total size.".format(num_samples, data_size))
         if self.n_iter:
-            log.debug("  - Terminating loop after {} total iterations.".format(self.n_iter))
+            log.debug(f"  - Terminating loop after {self.n_iter} total iterations.")
         if self.n_stable:
-            log.debug("  - Early termination after {} stable iterations.".format(self.n_stable))
+            log.debug(f"  - Early termination after {self.n_stable} stable iterations.")
 
         if self.verbose:
             log.debug("\nEpoch    Validation Error        Time"
                       "\n-------------------------------------")
-        
+
         self._backend._fit_impl(X)
         return self
 
@@ -147,14 +151,14 @@ class AutoEncoder(nn.NeuralNetwork, sklearn.base.TransformerMixin):
 
     def transfer(self, nn):
         assert not nn.is_initialized,\
-            "Target multi-layer perceptron has already been initialized."
+                "Target multi-layer perceptron has already been initialized."
 
         for a, l in zip(self.layers, nn.layers):
-            assert a.activation == l.type,\
-                "Mismatch in activation types in target MLP; expected `%s` but found `%s`."\
-                % (a.activation, l.type)
+            assert (
+                a.activation == l.type
+            ), f"Mismatch in activation types in target MLP; expected `{a.activation}` but found `{l.type}`."
             assert a.units == l.units,\
-                "Different number of units in target MLP; expected `%i` but found `%i`."\
-                % (a.units, l.units)
-       
+                    "Different number of units in target MLP; expected `%i` but found `%i`."\
+                    % (a.units, l.units)
+
         self._backend._transfer_impl(nn)

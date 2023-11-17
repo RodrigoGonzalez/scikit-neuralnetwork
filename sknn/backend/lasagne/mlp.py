@@ -54,9 +54,9 @@ class MultiLayerPerceptronBackend(BaseBackend):
             wd = self.weight_decay or 0.0001
             for l in self.layers:
                 layer_decay[l.name] = l.weight_decay or wd
-        assert len(layer_decay) == 0 or self.regularize in ('L1', 'L2', None)
+        assert not layer_decay or self.regularize in ('L1', 'L2', None)
 
-        if len(layer_decay) > 0:
+        if layer_decay:
             if self.regularize is None:
                 self.auto_enabled['regularize'] = 'L2'
             regularize = self.regularize or 'L2'
@@ -65,13 +65,16 @@ class MultiLayerPerceptronBackend(BaseBackend):
             self.regularizer = sum(layer_decay[s.name] * apply_regularize(l.get_params(regularizable=True), penalty)
                                    for s, l in zip(self.layers, self.mlp))
 
-        if self.normalize is None and any([l.normalize != None for l in self.layers]):
+        if self.normalize is None and any(
+            l.normalize != None for l in self.layers
+        ):
             self.auto_enabled['normalize'] = 'batch'
 
         cost_functions = {'mse': 'squared_error', 'mcc': 'categorical_crossentropy'}
         loss_type = self.loss_type or ('mcc' if self.is_classifier else 'mse')
-        assert loss_type in cost_functions,\
-                    "Loss type `%s` not supported by Lasagne backend." % loss_type
+        assert (
+            loss_type in cost_functions
+        ), f"Loss type `{loss_type}` not supported by Lasagne backend."
         self.cost_function = getattr(lasagne.objectives, cost_functions[loss_type])
         cost_symbol = self.cost_function(self.trainer_output, self.data_output)
         cost_symbol = lasagne.objectives.aggregate(cost_symbol.T, self.data_mask, mode='mean')
@@ -90,7 +93,8 @@ class MultiLayerPerceptronBackend(BaseBackend):
             self._learning_rule = lr(cost, params, learning_rate=self.learning_rate, momentum=self.learning_momentum)
         else:
             raise NotImplementedError(
-                "Learning rule type `%s` is not supported." % self.learning_rule)
+                f"Learning rule type `{self.learning_rule}` is not supported."
+            )
 
         trainer = theano.function([self.data_input, self.data_output, self.data_mask], cost,
                                    updates=self._learning_rule,
@@ -110,8 +114,9 @@ class MultiLayerPerceptronBackend(BaseBackend):
                           'Linear': nl.linear,
                           'ExpLin': explin}
 
-        assert l.type in nonlinearities,\
-            "Layer type `%s` is not supported for `%s`." % (l.type, l.name)
+        assert (
+            l.type in nonlinearities
+        ), f"Layer type `{l.type}` is not supported for `{l.name}`."
         return nonlinearities[l.type]
 
     def _create_convolution_layer(self, name, layer, network):
@@ -184,7 +189,7 @@ class MultiLayerPerceptronBackend(BaseBackend):
 
         # Create the layers one by one, connecting to previous.
         self.mlp = []
-        for i, layer in enumerate(self.layers):
+        for layer in self.layers:
             network = self._create_layer(layer.name, layer, network)
             network.name = layer.name
             self.mlp.append(network)
@@ -212,8 +217,9 @@ class MultiLayerPerceptronBackend(BaseBackend):
             else:
                 log.debug("  - Dense: {}{: <10}{} Units:  {}{: <4}{}".format(
                     ansi.BOLD, l.type, ansi.ENDC, ansi.BOLD, l.units, ansi.ENDC))
-                assert count == space[1],\
-                    "Mismatch in the calculated number of dense layer outputs. {} != {}".format(count, space[1])
+                assert (
+                    count == space[1]
+                ), f"Mismatch in the calculated number of dense layer outputs. {count} != {space[1]}"
 
         if self.weights is not None:
             l  = min(len(self.weights), len(self.mlp))
@@ -344,7 +350,7 @@ class MultiLayerPerceptronBackend(BaseBackend):
     def is_initialized(self):
         """Check if the neural network was setup already.
         """
-        return not (self.f is None)
+        return self.f is not None
 
     def _mlp_get_layer_params(self, layer):
         """Traverse the Lasagne network accumulating parameters until
@@ -370,13 +376,13 @@ class MultiLayerPerceptronBackend(BaseBackend):
 
             # Handle namedtuple format returned by get_parameters() as special case.
             # Must remove the last `name` item in the tuple since it's not a parameter.
-            string_types = getattr(types, 'StringTypes', tuple([str]))
-            data = tuple([d for d in data if not isinstance(d, string_types)])
+            string_types = getattr(types, 'StringTypes', (str, ))
+            data = tuple(d for d in data if not isinstance(d, string_types))
 
             params = self._mlp_get_layer_params(layer)
             assert len(data) == len(params),\
-                            "Mismatch in data size for layer `%s`. %i != %i"\
-                            % (layer.name, len(data), len(params))
+                                "Mismatch in data size for layer `%s`. %i != %i"\
+                                % (layer.name, len(data), len(params))
 
             for p, d in zip(params, data):
                 ps = tuple(p.shape.eval())

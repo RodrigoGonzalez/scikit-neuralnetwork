@@ -21,12 +21,12 @@ class TheanoConfigurator(object):
         if self.configured is True:
             return
         self.configured = True
-        
+
         if 'theano' in sys.modules:
             self.log.warning('Theano was already imported and cannot be reconfigured.')
             return
 
-        os.environ.setdefault('THEANO_FLAGS', flags+',print_active_device=False')
+        os.environ.setdefault('THEANO_FLAGS', f'{flags},print_active_device=False')
         cuda = logging.getLogger('theano.sandbox.cuda')
         cuda.setLevel(logging.CRITICAL)
         import theano
@@ -46,10 +46,10 @@ class TheanoConfigurator(object):
             flags = ',floatX=float64'
 
         if name.startswith('cpu'):
-            return self.configure('device=cpu'+flags)
+            return self.configure(f'device=cpu{flags}')
         if name.startswith('gpu'):
-            return self.configure('device=gpu'+flags)
-        
+            return self.configure(f'device=gpu{flags}')
+
         if name.startswith('thread'):
             try:
                 count = int(re.sub('\D', '', name))

@@ -83,7 +83,7 @@ RUNS = 10
 for name, orig in classifiers:
     times = []
     accuracies = []
-    for i in range(RUNS):
+    for _ in range(RUNS):
         start = time.time()
 
         clf = clone(orig)

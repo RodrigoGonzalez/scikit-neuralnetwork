@@ -19,7 +19,7 @@ def load(name):
             return pickle.load(f, **compat)
     except IOError:
         import gzip
-        with gzip.open(name+'.gz', 'rb') as f:
+        with gzip.open(f'{name}.gz', 'rb') as f:
             return pickle.load(f, **compat)
 
 

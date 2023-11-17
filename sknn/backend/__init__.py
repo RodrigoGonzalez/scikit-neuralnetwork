@@ -20,6 +20,6 @@ class AutoEncoderBackend(object):
 
 # Automatically import the recommended backend if none was manually imported.
 def setup():
-    if name == None:
-        from . import lasagne 
+    if name is None:
+        from . import lasagne
     assert name is not None, "No backend for module sknn was imported."
